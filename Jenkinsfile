@@ -1,5 +1,4 @@
 
-cat > Jenkinsfile <<'EOF'
 pipeline {
     agent {
         label 'java21'
@@ -99,5 +98,4 @@ pipeline {
         }
     }
 }
-EOF
 

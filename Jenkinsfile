@@ -1,3 +1,4 @@
+
 pipeline {
     agent {
         label 'java21'
@@ -9,11 +10,9 @@ pipeline {
     }
 
     stages {
-
         stage('Prepare Build') {
             steps {
                 echo 'Preparing Java 21 Maven build environment'
-
                 sh '''
                     java -version
                     mvn -version
@@ -34,7 +33,6 @@ pipeline {
                     test -f pom.xml
                     test -d src/main/java
                     test -d src/test/java
-
                     echo "Source validation successful"
                 '''
             }
@@ -42,14 +40,32 @@ pipeline {
 
         stage('Build and Test') {
             steps {
-                sh '''
-                    mvn -B -ntp clean verify
-                '''
+                sh 'mvn -B -ntp clean verify'
             }
             post {
                 always {
                     junit allowEmptyResults: true,
                           testResults: 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube-local') {
+                    sh '''
+                        mvn -B -ntp sonar:sonar \
+                          -Dsonar.projectKey=java-devsecops-lab \
+                          -Dsonar.projectName=java-devsecops-lab
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -64,11 +80,11 @@ pipeline {
 
     post {
         success {
-            echo 'Java DevSecOps build completed successfully!'
+            echo 'Java DevSecOps build and SonarQube Quality Gate completed successfully!'
         }
-
         failure {
-            echo 'Java DevSecOps build failed. Check console output.'
+            echo 'Pipeline failed. Check Jenkins console output.'
         }
     }
 }
+

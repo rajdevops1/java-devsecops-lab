@@ -1,4 +1,5 @@
 
+cat > Jenkinsfile <<'EOF'
 pipeline {
     agent {
         label 'java21'
@@ -10,9 +11,11 @@ pipeline {
     }
 
     stages {
+
         stage('Prepare Build') {
             steps {
                 echo 'Preparing Java 21 Maven build environment'
+
                 sh '''
                     java -version
                     mvn -version
@@ -33,6 +36,7 @@ pipeline {
                     test -f pom.xml
                     test -d src/main/java
                     test -d src/test/java
+
                     echo "Source validation successful"
                 '''
             }
@@ -42,6 +46,7 @@ pipeline {
             steps {
                 sh 'mvn -B -ntp clean verify'
             }
+
             post {
                 always {
                     junit allowEmptyResults: true,
@@ -54,7 +59,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube-local') {
                     sh '''
-                        mvn -B -ntp sonar:sonar \
+                        mvn -B -ntp \
+                          org.sonarsource.scanner.maven:sonar-maven-plugin:5.3.0.6276:sonar \
                           -Dsonar.projectKey=java-devsecops-lab \
                           -Dsonar.projectName=java-devsecops-lab
                     '''
@@ -62,7 +68,7 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
+        stage('SonarQube Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
@@ -80,11 +86,18 @@ pipeline {
 
     post {
         success {
-            echo 'Java DevSecOps build and SonarQube Quality Gate completed successfully!'
+            echo 'Java DevSecOps pipeline completed successfully!'
+            echo 'Build, tests, SonarQube analysis and Quality Gate passed.'
         }
+
         failure {
-            echo 'Pipeline failed. Check Jenkins console output.'
+            echo 'Pipeline failed. Please check Jenkins Console Output.'
+        }
+
+        always {
+            echo 'Pipeline execution finished.'
         }
     }
 }
+EOF
 
